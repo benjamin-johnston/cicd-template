@@ -6,5 +6,6 @@ export default defineConfig({
   base: '/cicd-template/', 
   build: {
     outDir: 'dist',
+    emptyOutDir: true
   }
 })

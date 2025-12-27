@@ -2,6 +2,16 @@
 New-Item -ItemType Directory -Force -Path ".github/workflows"
 New-Item -ItemType Directory -Force -Path "src"
 
+# Create .gitignore to prevent pushing local environment files
+$gitignore = @'
+node_modules
+dist
+.DS_Store
+*.local
+.env
+'@
+Set-Content -Path ".gitignore" -Value $gitignore
+
 # Create package.json
 $packageJson = @'
 {
@@ -60,6 +70,7 @@ export default {
 Set-Content -Path "postcss.config.js" -Value $postcssConfig
 
 # Create vite.config.js
+# MANDATORY: The base path MUST be '/cicd-template/' (with both slashes)
 $viteConfig = @'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -69,12 +80,13 @@ export default defineConfig({
   base: '/cicd-template/', 
   build: {
     outDir: 'dist',
+    emptyOutDir: true
   }
 })
 '@
 Set-Content -Path "vite.config.js" -Value $viteConfig
 
-# Create index.html (Updated to use standard Tailwind import if needed, but keeping CDN for simplicity)
+# Create index.html (Standardized to use local CSS instead of CDN)
 $indexHtml = @'
 <!doctype html>
 <html lang="en">
@@ -82,7 +94,6 @@ $indexHtml = @'
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CICD Template</title>
-    <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="bg-slate-900 text-white">
     <div id="root"></div>
@@ -91,6 +102,14 @@ $indexHtml = @'
 </html>
 '@
 Set-Content -Path "index.html" -Value $indexHtml
+
+# Create src/index.css for Tailwind directives
+$indexCss = @'
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+'@
+Set-Content -Path "src/index.css" -Value $indexCss
 
 # Create GitHub Action Workflow
 $deployYml = @'
@@ -148,6 +167,7 @@ $mainJsx = @'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
+import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -196,4 +216,4 @@ function StatusItem({ icon, text }) {
 '@
 Set-Content -Path "src/App.jsx" -Value $appJsx
 
-Write-Host "✅ Files updated with missing Tailwind/PostCSS configs!" -ForegroundColor Green
+Write-Host "✅ Files updated with missing Tailwind/PostCSS configs and .gitignore!" -ForegroundColor Green
