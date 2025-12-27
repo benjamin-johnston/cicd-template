@@ -2,6 +2,14 @@
 New-Item -ItemType Directory -Force -Path ".github/workflows"
 New-Item -ItemType Directory -Force -Path "src"
 
+# Helper to write clean UTF-8 without BOM (prevents Linux/Vite parsing errors)
+function Write-CleanUtf8 {
+    param($path, $content)
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    $fullPath = Join-Path (Get-Location) $path
+    [System.IO.File]::WriteAllText($fullPath, $content, $utf8NoBom)
+}
+
 # Create .gitignore
 $gitignore = @'
 node_modules
@@ -10,14 +18,14 @@ dist
 *.local
 .env
 '@
-$gitignore | Out-File -FilePath ".gitignore" -Encoding utf8
+Write-CleanUtf8 ".gitignore" $gitignore
 
 # Create .gitattributes (Crucial for Windows to Linux compatibility)
 $gitattributes = @'
 * text=auto eol=lf
 *.ps1 text eol=crlf
 '@
-$gitattributes | Out-File -FilePath ".gitattributes" -Encoding utf8
+Write-CleanUtf8 ".gitattributes" $gitattributes
 
 # Create package.json
 $packageJson = @'
@@ -47,7 +55,7 @@ $packageJson = @'
   }
 }
 '@
-$packageJson | Out-File -FilePath "package.json" -Encoding utf8
+Write-CleanUtf8 "package.json" $packageJson
 
 # Create tailwind.config.js
 $tailwindConfig = @'
@@ -63,7 +71,7 @@ export default {
   plugins: [],
 }
 '@
-$tailwindConfig | Out-File -FilePath "tailwind.config.js" -Encoding utf8
+Write-CleanUtf8 "tailwind.config.js" $tailwindConfig
 
 # Create postcss.config.js
 $postcssConfig = @'
@@ -74,10 +82,10 @@ export default {
   },
 }
 '@
-$postcssConfig | Out-File -FilePath "postcss.config.js" -Encoding utf8
+Write-CleanUtf8 "postcss.config.js" $postcssConfig
 
 # Create vite.config.js
-# FIXED: Using Out-File with utf8 and removed trailing spaces
+# FIXED: Using clean UTF8 write to ensure no invisible carriage returns break the path
 $viteConfig = @'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -91,7 +99,7 @@ export default defineConfig({
   }
 })
 '@
-$viteConfig | Out-File -FilePath "vite.config.js" -Encoding utf8
+Write-CleanUtf8 "vite.config.js" $viteConfig
 
 # Create index.html
 $indexHtml = @'
@@ -108,7 +116,7 @@ $indexHtml = @'
   </body>
 </html>
 '@
-$indexHtml | Out-File -FilePath "index.html" -Encoding utf8
+Write-CleanUtf8 "index.html" $indexHtml
 
 # Create src/index.css
 $indexCss = @'
@@ -116,10 +124,9 @@ $indexCss = @'
 @tailwind components;
 @tailwind utilities;
 '@
-$indexCss | Out-File -FilePath "src/index.css" -Encoding utf8
+Write-CleanUtf8 "src/index.css" $indexCss
 
 # Create GitHub Action Workflow
-# Using double-backticks for the variable to avoid PS interpolation
 $deployYml = @'
 name: Deploy to GitHub Pages
 
@@ -168,7 +175,7 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 '@
-$deployYml | Out-File -FilePath ".github/workflows/deploy.yml" -Encoding utf8
+Write-CleanUtf8 ".github/workflows/deploy.yml" $deployYml
 
 # Create src/main.jsx
 $mainJsx = @'
@@ -183,7 +190,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>,
 )
 '@
-$mainJsx | Out-File -FilePath "src/main.jsx" -Encoding utf8
+Write-CleanUtf8 "src/main.jsx" $mainJsx
 
 # Create src/App.jsx
 $appJsx = @'
@@ -222,6 +229,20 @@ function StatusItem({ icon, text }) {
   );
 }
 '@
-$appJsx | Out-File -FilePath "src/App.jsx" -Encoding utf8
+Write-CleanUtf8 "src/App.jsx" $appJsx
 
-Write-Host "✅ Files updated with UTF-8 encoding and .gitattributes!" -ForegroundColor Green
+Write-Host "`n✅ Files successfully written using Clean UTF-8 (No BOM)!" -ForegroundColor Green
+
+# New Step: Automatically generate package-lock.json
+if (Get-Command npm -ErrorAction SilentlyContinue) {
+    Write-Host "`n📦 Running 'npm install' to generate package-lock.json..." -ForegroundColor Cyan
+    npm install
+    Write-Host "`n✅ package-lock.json has been generated." -ForegroundColor Green
+} else {
+    Write-Host "`n⚠️ 'npm' command not found. Please install Node.js and run 'npm install' manually to generate the lockfile." -ForegroundColor Yellow
+}
+
+Write-Host "`nTo ensure GitHub sees these changes and the new lockfile, run the following:" -ForegroundColor White
+Write-Host "1. git add ."
+Write-Host "2. git commit -m 'fix: add package-lock.json and resolve encoding issues'"
+Write-Host "3. git push origin main" -ForegroundColor White
